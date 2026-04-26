@@ -1,10 +1,11 @@
 // DashboardAgriculteur.jsx - Version avec intégration API
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 
 export default function DashboardAgriculteur() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState(null);
@@ -17,15 +18,11 @@ export default function DashboardAgriculteur() {
   });
 
   const navLinks = [
-    {
-      icon: "dashboard",
-      label: "Tableau de bord",
-      active: true,
-      href: "/dashboard-agriculteur",
-    },
-    { icon: "landscape", label: "Mes Terres", href: "/dashboard-agriculteur" },
-    { icon: "add_circle", label: "Publier un terrain", href: "/publier-terrain" },
-    { icon: "person", label: "Mon profil", href: "/profil" },
+    { icon: "dashboard", label: "Tableau de bord", to: "/dashboard-agriculteur" },
+    { icon: "add_circle", label: "Publier un terrain", to: "/publier-terrain" },
+    { icon: "storefront", label: "Marketplace", to: "/marketplace" },
+    { icon: "gavel", label: "Notaires", to: "/notaires" },
+    { icon: "person", label: "Mon profil", to: "/profil" },
   ];
 
   useEffect(() => {
@@ -298,9 +295,10 @@ export default function DashboardAgriculteur() {
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: "pointer",
+                      transition: "background-color 0.2s, color 0.2s",
                       background:
-                        window.location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
-                      color: window.location.pathname === n.to ? "#00694c" : "#171d1a",
+                        location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
+                      color: location.pathname === n.to ? "#00694c" : "#171d1a",
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
@@ -340,17 +338,21 @@ export default function DashboardAgriculteur() {
               </button>
               <button
                 onClick={() => {
-                  localStorage.removeItem("ardmarket_token");
-                  localStorage.removeItem("user_role");
-                  window.location.href = "/connexion";
+                  api.logout();
+                  navigate("/connexion");
                 }}
+                title="Déconnexion"
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   padding: 8,
                   color: "#dc2626",
+                  transition: "background-color 0.2s",
+                  borderRadius: "50%",
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 <span className="material-symbols-outlined">logout</span>
               </button>
@@ -455,31 +457,47 @@ export default function DashboardAgriculteur() {
                 flex: 1,
               }}
             >
-              {navLinks.map(({ icon, label, active, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "12px 16px",
-                    borderRadius: 8,
-                    backgroundColor: active ? "#E8F5F1" : "transparent",
-                    color: active ? "#1D9E75" : "#475569",
-                    fontWeight: active ? 600 : 400,
-                    fontSize: 14,
-                    borderRight: active
-                      ? "4px solid #1D9E75"
-                      : "4px solid transparent",
-                    textDecoration: "none",
-                    transition: "all 0.3s",
-                  }}
-                >
-                  <span className="material-symbols-outlined">{icon}</span>
-                  {label}
-                </a>
-              ))}
+              {navLinks.map(({ icon, label, to }) => {
+                const active = location.pathname === to;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => navigate(to)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      backgroundColor: active ? "#E8F5F1" : "transparent",
+                      color: active ? "#1D9E75" : "#475569",
+                      fontWeight: active ? 600 : 400,
+                      fontSize: 14,
+                      borderRight: active
+                        ? "4px solid #1D9E75"
+                        : "4px solid transparent",
+                      border: "none",
+                      borderRightWidth: 4,
+                      borderRightStyle: "solid",
+                      borderRightColor: active ? "#1D9E75" : "transparent",
+                      textDecoration: "none",
+                      transition: "all 0.2s ease",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      width: "100%",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!active) e.currentTarget.style.backgroundColor = "#f1f5f4";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <span className="material-symbols-outlined">{icon}</span>
+                    {label}
+                  </button>
+                );
+              })}
               <div
                 style={{
                   marginTop: "auto",
@@ -490,32 +508,32 @@ export default function DashboardAgriculteur() {
                   gap: 8,
                 }}
               >
-                {[
-                  {
-                    icon: "settings",
-                    label: "Paramètres",
-                    href: "/parametres",
-                  },
-                  { icon: "help_outline", label: "Aide", href: "/aide" },
-                ].map(({ icon, label, href }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "12px 16px",
-                      borderRadius: 8,
-                      color: "#475569",
-                      fontSize: 14,
-                      textDecoration: "none",
-                    }}
-                  >
-                    <span className="material-symbols-outlined">{icon}</span>
-                    {label}
-                  </a>
-                ))}
+                <button
+                  onClick={() => {
+                    api.logout();
+                    navigate("/connexion");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    color: "#dc2626",
+                    fontSize: 14,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    width: "100%",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <span className="material-symbols-outlined">logout</span>
+                  Déconnexion
+                </button>
               </div>
             </nav>
           </aside>
@@ -737,8 +755,8 @@ export default function DashboardAgriculteur() {
                   >
                     Mes Terrains
                   </h3>
-                  <a
-                    href="/mes-terres"
+                  <button
+                    onClick={() => navigate("/publier-terrain")}
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
@@ -749,16 +767,19 @@ export default function DashboardAgriculteur() {
                       display: "flex",
                       alignItems: "center",
                       gap: 4,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
                     }}
                   >
-                    Voir tout{" "}
+                    Publier un nouveau{" "}
                     <span
                       className="material-symbols-outlined"
                       style={{ fontSize: 16 }}
                     >
                       arrow_forward
                     </span>
-                  </a>
+                  </button>
                 </div>
                 <div
                   style={{
