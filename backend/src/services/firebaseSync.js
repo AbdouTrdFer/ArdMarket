@@ -4,6 +4,76 @@ import bcrypt from "bcryptjs";
 import { db } from "../db.js";
 import { getFirestore } from "./firebase.js";
 
+// Pool d'images réalistes par région — vues drone, topographiques, paysages marocains.
+// Images curées Unsplash (libres) — utilisées en complément (ou remplacement) des images
+// CDN Telegram qui peuvent contenir des photos test peu représentatives.
+const REGION_IMAGE_POOLS = {
+  "Casablanca": [
+    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1465379944081-7f47de8d74ac?w=1200&h=800&fit=crop",
+  ],
+  "Oujda": [
+    "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1542089363-bcb4be8df198?w=1200&h=800&fit=crop",
+  ],
+  "Meknès": [
+    "https://images.unsplash.com/photo-1445264718234-a623be589d37?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1601566091022-a6d22b0ec0b0?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1471696035578-3d8c78d99684?w=1200&h=800&fit=crop",
+  ],
+  "Souss": [
+    "https://images.unsplash.com/photo-1591735557715-37bd7baef5cb?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1547514701-42782101795e?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1565710302983-cabe46c2f7da?w=1200&h=800&fit=crop",
+  ],
+  "Taroudant": [
+    "https://images.unsplash.com/photo-1597474561103-0b73c6dba8da?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=1200&h=800&fit=crop",
+  ],
+  "Marrakech": [
+    "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&h=800&fit=crop",
+  ],
+  "Gharb": [
+    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&h=800&fit=crop",
+  ],
+  "Beni Mellal": [
+    "https://images.unsplash.com/photo-1560493676-04071c5f467b?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1444858345736-67cb3a4f1bf6?w=1200&h=800&fit=crop",
+  ],
+  "Haouz": [
+    "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=1200&h=800&fit=crop",
+  ],
+  "default": [
+    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1200&h=800&fit=crop",
+    "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&h=800&fit=crop",
+  ],
+};
+
+// Vue topographique / aérienne — appliquée à toutes les annonces bot pour
+// donner l'aspect "vue drone + plan" demandé par les investisseurs.
+const TOPOGRAPHIC_IMAGES = [
+  "https://images.unsplash.com/photo-1569163139394-de4798aa62b1?w=1200&h=800&fit=crop", // aerial farmland mosaic
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop", // wheat fields aerial
+  "https://images.unsplash.com/photo-1465379944081-7f47de8d74ac?w=1200&h=800&fit=crop", // mountain landscape
+];
+
+function pickRealisticImages(region, listingId) {
+  const pool = REGION_IMAGE_POOLS[region] || REGION_IMAGE_POOLS.default;
+  // Index déterministe à partir du listingId pour avoir la même image à chaque sync
+  const seed = (listingId || "x").split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const main = pool[seed % pool.length];
+  const topo = TOPOGRAPHIC_IMAGES[seed % TOPOGRAPHIC_IMAGES.length];
+  // Évite les doublons si le pool n'a qu'une seule image
+  const second = pool.length > 1 ? pool[(seed + 1) % pool.length] : pool[0];
+  return [...new Set([main, topo, second].filter(Boolean))];
+}
+
 // Dictionnaire darija/arabe → français pour les villes courantes
 const ARABIC_LOCATION_MAP = {
   "وجدة": "Oujda",
@@ -213,6 +283,11 @@ function listingToLandPayload(listing, ownerId) {
       ? Number(listing.surface_m2) / 10000
       : 0;
 
+  // Cover image: privilégie une image réaliste (drone/aérienne) Maroc
+  // au lieu de l'image CDN Telegram qui peut être un screenshot test du paysan.
+  const realistic = pickRealisticImages(region, listing.listing_id);
+  const cover = realistic[0];
+
   return {
     owner_id: ownerId,
     title: generateTitle(listing, listing.owner_claimed),
@@ -231,7 +306,7 @@ function listingToLandPayload(listing, ownerId) {
     distance_road_km: null,
     latitude: null,
     longitude: null,
-    cover_image: (listing.images && listing.images[0]) || null,
+    cover_image: cover,
     status: listing.status === "verified" ? "validated" : "pending",
     legal_score: listing.tf_number ? 75 : 50,
     estimated_yield: null,
@@ -240,6 +315,7 @@ function listingToLandPayload(listing, ownerId) {
     tf_number: listing.tf_number || null,
     owner_claimed_name: listing.owner_claimed || null,
     duration_months: listing.duration_months || null,
+    _realistic_images: realistic,
   };
 }
 
@@ -351,7 +427,13 @@ export async function syncFromFirebase({ limit = 100 } = {}) {
       const owner = await getOrCreateOwner(listing.owner_telegram_id, fbUsersCol);
       const payload = listingToLandPayload(listing, owner.id);
       const { id, action } = upsertLand(payload);
-      const imgN = syncImages(id, listing.images);
+      // Combine realistic images (en premier, pour la galerie) + images CDN Telegram (en suffixe).
+      // Si Telegram CDN renvoie un screenshot test, l'utilisateur voit d'abord les images de qualité.
+      const allImages = [...new Set([
+        ...(payload._realistic_images || []),
+        ...((listing.images || []).filter((u) => typeof u === "string")),
+      ])];
+      const imgN = syncImages(id, allImages);
       const docN = syncDocuments(id, listing.documents);
 
       if (action === "created") result.created++;

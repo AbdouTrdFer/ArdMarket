@@ -68,15 +68,37 @@ export default function AdminSync() {
           Retour
         </button>
 
-        <header style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: C.text, margin: 0 }}>
-            Synchronisation Bot Telegram
-          </h1>
-          <p style={{ fontSize: 16, color: C.textSoft, marginTop: 8, maxWidth: 720 }}>
-            Importe les annonces des paysans soumises en darija via le chatbot Telegram (NLP +
-            extraction de documents par IA) directement dans ArdMarket. Idempotent : les annonces
-            déjà importées sont mises à jour, pas dupliquées.
-          </p>
+        <header style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 300 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 800, color: C.text, margin: 0 }}>
+              Synchronisation Bot Telegram
+            </h1>
+            <p style={{ fontSize: 16, color: C.textSoft, marginTop: 8, maxWidth: 720 }}>
+              Importe les annonces des paysans soumises en darija via le chatbot Telegram (NLP +
+              extraction de documents par IA) directement dans ArdMarket. Idempotent : les annonces
+              déjà importées sont mises à jour, pas dupliquées.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/demo/telegram")}
+            style={{
+              background: "#0088cc",
+              color: "white",
+              border: "none",
+              padding: "12px 18px",
+              borderRadius: 10,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              flexShrink: 0,
+              boxShadow: "0 2px 8px rgba(0,136,204,0.3)",
+            }}
+          >
+            <span className="material-symbols-outlined">play_circle</span>
+            Voir la démo bot live
+          </button>
         </header>
 
         {/* Status card */}

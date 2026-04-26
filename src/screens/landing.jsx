@@ -27,8 +27,8 @@ const FEATURES = [
   },
   {
     icon: "record_voice_over",
-    title: "Bot WhatsApp Darija",
-    text: "Les paysans peuvent publier leur terre en envoyant un simple vocal en Darija. L'IA transcrit, extrait les infos et crée la fiche automatiquement.",
+    title: "Bot Telegram Darija",
+    text: "Les paysans publient leur terre en envoyant un vocal en Darija sur Telegram. L'IA transcrit, lit le titre foncier (OCR), et crée la fiche — sans toucher au site web.",
     color: "#28a745",
   },
   {
@@ -61,7 +61,7 @@ const HOW = [
   {
     step: "01",
     title: "Le paysan publie sa terre",
-    text: "Via le site ou un simple vocal WhatsApp en Darija. Il joint ses documents légaux.",
+    text: "Via le site ou un simple vocal Telegram en Darija. Il joint ses documents légaux.",
     icon: "agriculture",
   },
   {
@@ -95,7 +95,7 @@ const TESTIMONIALS = [
     name: "Ahmed Mansouri",
     role: "Agriculteur, Taroudant",
     img: "https://randomuser.me/api/portraits/men/43.jpg",
-    text: "J'ai publié mon terrain via WhatsApp en Darija. En 3 jours j'avais 4 demandes d'investisseurs sérieux. C'est révolutionnaire pour nous, paysans.",
+    text: "J'ai publié mon terrain via Telegram en Darija. En 3 jours j'avais 4 demandes d'investisseurs sérieux. C'est révolutionnaire pour nous, paysans.",
   },
   {
     name: "Karim Benali",
@@ -154,8 +154,8 @@ const PLANS = [
 
 const FAQS = [
   {
-    q: "Comment fonctionne le bot WhatsApp Darija ?",
-    a: "Le paysan envoie un vocal en Darija sur notre numéro WhatsApp. L'IA transcrit, extrait les infos clés (région, surface, eau, culture) et crée une fiche brouillon que le paysan valide.",
+    q: "Comment fonctionne le bot Telegram Darija ?",
+    a: "Le paysan envoie un vocal en Darija au bot Telegram ArdMarket. Le NLP extrait localisation/surface/prix, demande les photos et le titre foncier, l'IA Vision lit le document, et la fiche apparaît automatiquement sur ArdMarket.",
   },
   {
     q: "Pourquoi les contacts sont-ils masqués ?",
@@ -365,7 +365,7 @@ export default function LandingPage() {
               >
                 ArdMarket connecte les <strong>paysans qui veulent louer leurs terres</strong> avec
                 les <strong>investisseurs agricoles</strong>. Un Airbnb des terres, propulsé par
-                l'IA, le WhatsApp Darija et l'inclusion ESS.
+                l'IA, le Telegram Darija et l'inclusion ESS.
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <button className="lp-btn-primary" onClick={goRegister}>
@@ -505,7 +505,7 @@ export default function LandingPage() {
                 badge="Paysan / Agriculteur"
                 title="Valorisez vos terres sans complexité"
                 bullets={[
-                  "Publication via le site ou un vocal WhatsApp en Darija",
+                  "Publication via le site ou un vocal Telegram en Darija",
                   "L'IA extrait les infos de vos documents légaux",
                   "Score légal et boost pour gagner en visibilité",
                   "Recevez des offres directement, en toute transparence",
