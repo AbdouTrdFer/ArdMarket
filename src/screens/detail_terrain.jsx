@@ -1,720 +1,866 @@
+// DetailTerrain.jsx - branché sur l'API backend, contact masqué/déblocable
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import api from "../services/api";
+
+const C = {
+  primary: "#1D9E75",
+  primaryDark: "#00694c",
+  bg: "#f5fbf5",
+  text: "#171d1a",
+  textSoft: "#3d4943",
+  border: "#dee4de",
+};
+
+const FALLBACK_IMG =
+  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop";
+
 export default function DetailTerrain() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [land, setLand] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeImg, setActiveImg] = useState(0);
+  const [unlocking, setUnlocking] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerPrice, setOfferPrice] = useState("");
+  const [offerYears, setOfferYears] = useState("3");
+  const [offerMessage, setOfferMessage] = useState("");
+  const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [offerSuccess, setOfferSuccess] = useState("");
+  const [simulation, setSimulation] = useState(null);
+
+  useEffect(() => {
+    api.me().then((r) => setUser(r.user || r)).catch(() => {});
+    loadLand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const loadLand = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api.getLand(id);
+      setLand(data);
+      // Lance la simulation ROI en parallèle (non bloquant)
+      api
+        .simulateLand(id, {})
+        .then(setSimulation)
+        .catch(() => {});
+    } catch (err) {
+      setError(err.message || "Terrain introuvable");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!user) {
+      navigate("/connexion");
+      return;
+    }
+    setUnlocking(true);
+    setError("");
+    try {
+      await api.unlockContact(id);
+      // Recharge le terrain pour avoir le contact démasqué
+      await loadLand();
+      // Recharge aussi user.credits
+      const me = await api.me();
+      setUser(me.user || me);
+    } catch (err) {
+      if (err.status === 402 || err.status === 403) {
+        if (
+          window.confirm(
+            "Crédits insuffisants ou plan free. Voulez-vous voir les options d'abonnement ?",
+          )
+        ) {
+          navigate("/profil");
+        }
+      } else {
+        setError(err.message || "Erreur de déblocage");
+      }
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const submitOffer = async () => {
+    if (!user) {
+      navigate("/connexion");
+      return;
+    }
+    if (!offerPrice || Number(offerPrice) <= 0) {
+      setError("Prix invalide");
+      return;
+    }
+    setOfferSubmitting(true);
+    setError("");
+    try {
+      await api.createOffer(id, {
+        price: Number(offerPrice),
+        duration_years: Number(offerYears),
+        message: offerMessage || undefined,
+      });
+      setOfferSuccess("Offre envoyée avec succès au propriétaire !");
+      setShowOfferModal(false);
+      setOfferPrice("");
+      setOfferMessage("");
+    } catch (err) {
+      setError(err.message || "Erreur d'envoi");
+    } finally {
+      setOfferSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: C.bg,
+        }}
+      >
+        <p>Chargement du terrain...</p>
+      </div>
+    );
+  }
+
+  if (error && !land) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: C.bg,
+          gap: 16,
+        }}
+      >
+        <p>{error}</p>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            background: C.primaryDark,
+            color: "#fff",
+            padding: "10px 20px",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  if (!land) return null;
+
+  const images =
+    land.images && land.images.length > 0
+      ? land.images.map((i) => i.url)
+      : land.cover_image
+        ? [land.cover_image]
+        : [FALLBACK_IMG];
+
+  const score = land.legal_score ?? 70;
+  const scoreColor = score >= 85 ? C.primaryDark : score >= 65 ? "#704200" : "#9b1c1c";
+
+  const contact = land.owner_contact;
+  const isMasked = !contact || contact.masked;
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
-        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .fill-icon { font-variation-settings: 'FILL' 1 !important; }
-        .gallery:hover img { transform: scale(1.05); }
-        .bg-zellige { background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2.5L22.5 16 25 13.5V0h2v13.5L29.5 16 32 13.5V0h2v13.5l2.5 2.5L39 13.5V0h1v15.5l-2.5 2.5-2.5-2.5V20h-2v-4.5l-2.5 2.5-2.5-2.5V20h-2v-4.5l-2.5 2.5L20 20.5zM0 22h20v2.5l2.5-2.5 2.5 2.5V22h2v4.5l2.5-2.5 2.5 2.5V22h2v4.5l2.5-2.5 2.5 2.5V22h1v20h-1V26.5l-2.5 2.5-2.5-2.5V31h-2v-4.5l-2.5 2.5-2.5-2.5V31h-2v-4.5l-2.5 2.5L20 23.5V40h-2V22H0v-2z' fill='%2300694c' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E"); }
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; }
+        .dt-card { background: #fff; border-radius: 12px; border: 1px solid ${C.border}; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+        .dt-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid ${C.border}; font-size: 14px; outline: none; }
+        .dt-input:focus { border-color: ${C.primary}; }
       `}</style>
-      <div
-        style={{
-          backgroundColor: "#f5fbf5",
-          color: "#171d1a",
-          minHeight: "100vh",
-        }}
-      >
+      <div style={{ minHeight: "100vh", backgroundColor: C.bg, color: C.text }}>
         {/* Header */}
         <header
           style={{
-            backgroundColor: "rgba(255,255,255,0.9)",
-            backdropFilter: "blur(12px)",
+            backgroundColor: "rgba(255,255,255,.95)",
+            backdropFilter: "blur(8px)",
             position: "sticky",
             top: 0,
             zIndex: 50,
-            borderBottom: "1px solid #f1f5f9",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
+            borderBottom: `1px solid ${C.border}`,
+            padding: "14px 24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <div
+            onClick={() => navigate("/")}
+            style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+          >
+            <span className="material-symbols-outlined" style={{ color: C.primary, fontSize: 26 }}>
+              landscape
+            </span>
+            <span style={{ fontSize: 20, fontWeight: 800, color: C.primary, letterSpacing: "-.05em" }}>
+              ArdMarket
+            </span>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
             style={{
+              background: "none",
+              border: `1px solid ${C.border}`,
+              padding: "8px 14px",
+              borderRadius: 999,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              width: "100%",
-              padding: "16px 24px",
-              maxWidth: 1440,
-              margin: "0 auto",
+              gap: 6,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  borderRadius: "50%",
-                  padding: 8,
-                }}
-              >
-                <span className="material-symbols-outlined">menu</span>
-              </button>
-              <span
-                style={{
-                  fontSize: 20,
-                  fontWeight: 900,
-                  color: "#1D9E75",
-                  letterSpacing: "-0.05em",
-                }}
-              >
-                ArdMarket
-              </span>
-            </div>
-            <button
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: "50%",
-                padding: 8,
-              }}
-            >
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-          </div>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span>
+            Retour
+          </button>
         </header>
 
-        {/* Back Nav */}
-        <div style={{ maxWidth: 1440, margin: "0 auto", padding: "16px 24px" }}>
-          <a
-            href="#"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              color: "#00694c",
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              textDecoration: "none",
-            }}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: 14 }}
-            >
-              arrow_back
-            </span>
-            Retour à l'exploration
-          </a>
-        </div>
-
-        {/* Main */}
-        <main
-          style={{
-            maxWidth: 1440,
-            margin: "0 auto",
-            padding: "0 24px 64px",
-            display: "grid",
-            gridTemplateColumns: "3fr 2fr",
-            gap: 40,
-          }}
-        >
-          {/* Left */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-            {/* Gallery */}
-            <div
-              className="gallery"
+        <main style={{ maxWidth: 1280, margin: "0 auto", padding: "24px" }}>
+          {/* Title row */}
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: ".1em" }}>
+              {land.region}{land.commune ? ` · ${land.commune}` : ""}
+            </p>
+            <h1 style={{ fontSize: 36, fontWeight: 700, marginTop: 4, letterSpacing: "-.02em" }}>
+              {land.title}
+            </h1>
+            <p
               style={{
-                position: "relative",
-                width: "100%",
-                aspectRatio: "16/9",
-                borderRadius: 12,
-                overflow: "hidden",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-                border: "1px solid rgba(188,202,193,0.3)",
-                cursor: "pointer",
+                fontSize: 14,
+                color: C.textSoft,
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxaPGtP888dUfoP488yRgrJ4lVlXr6FtFT84XK4nhNogP9yHn--RUzQxOuLasXY5AAUcbctbWF_z1-lQSSMWGt728yMgLTuYJLPnPLF6YskjDQDcPyu1OpeH2Cx5HOHyCRsDaLMjAJtp-yGY44XTT5458JBwK8u2Uu5Rgt34Fq8VpIDj2V7PMNdm_5z1lMtOlCEWRVpNJqg4x13s6yQ1xyCYhxET2sZjtYYJoOGhhyYnRh6UlxSU1ASFgBc4ZHjqdkZdg5u5GvLQ"
-                alt="Terrain"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transition: "transform 0.7s",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to top, rgba(23,29,26,0.6), transparent)",
-                  pointerEvents: "none",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 16,
-                  right: 16,
-                  backgroundColor: "rgba(255,255,255,0.9)",
-                  backdropFilter: "blur(4px)",
-                  padding: "6px 12px",
-                  borderRadius: 9999,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 14 }}
-                >
-                  photo_library
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>location_on</span>
+              {[land.commune, land.region].filter(Boolean).join(", ")}
+              {land.latitude && land.longitude && (
+                <span style={{ marginLeft: 8 }}>
+                  · GPS {land.latitude.toFixed(4)}, {land.longitude.toFixed(4)}
                 </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  1/8 Photos
-                </span>
-              </div>
-            </div>
-
-            {/* Header Info */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                <span
-                  style={{
-                    backgroundColor: "#E8F5F1",
-                    color: "#1D9E75",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.05em",
-                    padding: "4px 12px",
-                    borderRadius: 9999,
-                    border: "1px solid rgba(29,158,117,0.2)",
-                  }}
-                >
-                  Disponible
-                </span>
-                <span
-                  style={{
-                    backgroundColor: "#eaefea",
-                    color: "#3d4943",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.05em",
-                    padding: "4px 12px",
-                    borderRadius: 9999,
-                  }}
-                >
-                  Location Longue Durée
-                </span>
-              </div>
-              <h1
-                style={{
-                  fontSize: 32,
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Domaine Agricole Al Haouz - 45 Hectares
-              </h1>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "#3d4943",
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ color: "#00694c" }}
-                >
-                  location_on
-                </span>
-                <span style={{ fontSize: 16 }}>
-                  Région Marrakech-Safi, Commune d'Agafay
-                </span>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div
-              style={{
-                backgroundColor: "#fff",
-                borderRadius: 12,
-                border: "1px solid rgba(188,202,193,0.5)",
-                padding: 24,
-                boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 24,
-                  fontWeight: 600,
-                  letterSpacing: "-0.01em",
-                  marginBottom: 16,
-                }}
-              >
-                Description du bien
-              </h2>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: "#3d4943",
-                  lineHeight: 1.5,
-                  marginBottom: 16,
-                }}
-              >
-                Exceptionnel domaine agricole de 45 hectares situé au cœur de la
-                région d'Al Haouz, offrant un potentiel de rendement élevé pour
-                des cultures maraîchères ou l'arboriculture (oliviers, agrumes).
-                La terre a bénéficié d'un repos de 2 ans, garantissant une
-                régénération optimale des nutriments.
-              </p>
-              <p style={{ fontSize: 14, color: "#3d4943", lineHeight: 1.5 }}>
-                L'accès est facilité par une route goudronnée jusqu'à l'entrée
-                principale du domaine, situé à seulement 30 km du marché de gros
-                de Marrakech. Idéal pour une exploitation professionnelle
-                cherchant à étendre sa production avec des garanties légales et
-                infrastructurelles solides.
-              </p>
-            </div>
-
-            {/* Characteristics */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 600 }}>
-                Caractéristiques Clés
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: 16,
-                }}
-              >
-                {[
-                  {
-                    icon: "water_drop",
-                    color: "#00694c",
-                    bg: "rgba(0,105,76,0.05)",
-                    label: "Ressources en Eau",
-                    title: "Puits Déclaré",
-                    sub: "Débit: 15L/seconde",
-                  },
-                  {
-                    icon: "landscape",
-                    color: "#BA7517",
-                    bg: "rgba(186,117,23,0.05)",
-                    label: "Type de Sol",
-                    title: "Limono-Argileux",
-                    sub: "Ph: 7.2 (Idéal)",
-                  },
-                  {
-                    icon: "gavel",
-                    color: "#885200",
-                    bg: "rgba(136,82,0,0.05)",
-                    label: "Statut Foncier",
-                    title: "Titré (Melkia)",
-                    sub: "Conservation Foncière",
-                  },
-                ].map(({ icon, color, bg, label, title, sub }) => (
-                  <div
-                    key={label}
-                    style={{
-                      backgroundColor: "#fff",
-                      borderRadius: 12,
-                      border: "1px solid rgba(188,202,193,0.5)",
-                      padding: 20,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        right: -16,
-                        top: -16,
-                        width: 64,
-                        height: 64,
-                        backgroundColor: bg,
-                        borderRadius: "50%",
-                      }}
-                    />
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ color, marginBottom: 4, display: "block" }}
-                    >
-                      {icon}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                        color: "#3d4943",
-                        display: "block",
-                      }}
-                    >
-                      {label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 20,
-                        fontWeight: 600,
-                        display: "block",
-                        marginTop: 4,
-                      }}
-                    >
-                      {title}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        color: "#3d4943",
-                        display: "block",
-                        marginTop: 4,
-                      }}
-                    >
-                      {sub}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              )}
+            </p>
           </div>
 
-          {/* Sidebar */}
+          {/* Gallery */}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 32,
-              position: "sticky",
-              top: 96,
-              alignSelf: "flex-start",
+              display: "grid",
+              gridTemplateColumns: images.length > 1 ? "2fr 1fr 1fr" : "1fr",
+              gap: 8,
+              marginBottom: 24,
+              borderRadius: 16,
+              overflow: "hidden",
+              maxHeight: 480,
             }}
           >
-            {/* Pricing */}
+            <div style={{ gridRow: "span 2", height: images.length > 1 ? 480 : 360 }}>
+              <img
+                src={images[activeImg] || images[0]}
+                alt={land.title}
+                onError={(e) => (e.currentTarget.src = FALLBACK_IMG)}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </div>
+            {images.slice(1, 5).map((url, i) => (
+              <div key={i} style={{ height: 236 }}>
+                <img
+                  src={url}
+                  alt={`Vue ${i + 2}`}
+                  onError={(e) => (e.currentTarget.src = FALLBACK_IMG)}
+                  onClick={() => setActiveImg(i + 1)}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {error && (
             <div
               style={{
-                backgroundColor: "#fff",
-                borderRadius: 12,
-                border: "1px solid rgba(188,202,193,0.5)",
-                padding: 24,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 24,
+                padding: 12,
+                marginBottom: 16,
+                backgroundColor: "#fee2e2",
+                color: "#7f1d1d",
+                borderRadius: 8,
+                fontSize: 14,
               }}
             >
-              <div>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "#3d4943",
-                  }}
-                >
-                  Prix de location
-                </span>
-                <div
-                  style={{ display: "flex", alignItems: "baseline", gap: 4 }}
-                >
-                  <span
-                    style={{
-                      fontSize: 32,
-                      fontWeight: 700,
-                      letterSpacing: "-0.02em",
-                      color: "#1D9E75",
-                    }}
-                  >
-                    80,000
-                  </span>
-                  <span style={{ fontSize: 20, fontWeight: 600 }}>DH/an</span>
+              {error}
+            </div>
+          )}
+          {offerSuccess && (
+            <div
+              style={{
+                padding: 12,
+                marginBottom: 16,
+                backgroundColor: "#dcfce7",
+                color: "#14532d",
+                borderRadius: 8,
+                fontSize: 14,
+              }}
+            >
+              {offerSuccess}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
+            {/* LEFT */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {/* Description */}
+              <div className="dt-card">
+                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Description</h2>
+                <p style={{ fontSize: 15, lineHeight: 1.7, color: C.textSoft }}>
+                  {land.description || "Pas de description disponible."}
+                </p>
+              </div>
+
+              {/* Caractéristiques */}
+              <div className="dt-card">
+                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16 }}>
+                  Caractéristiques
+                </h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                  <SpecRow icon="straighten" label="Superficie" value={`${land.surface_ha} hectares`} />
+                  <SpecRow icon="agriculture" label="Type de culture" value={land.crop_type || "—"} />
+                  <SpecRow icon="terrain" label="Type de sol" value={land.soil_type || "—"} />
+                  <SpecRow
+                    icon="water_drop"
+                    label="Eau"
+                    value={land.has_water ? `Disponible${land.water_flow ? ` (${land.water_flow})` : ""}` : "Aucune"}
+                  />
+                  <SpecRow icon="gavel" label="Statut juridique" value={land.legal_status || "—"} />
+                  <SpecRow
+                    icon="route"
+                    label="Distance route"
+                    value={land.distance_road_km ? `${land.distance_road_km} km` : "—"}
+                  />
+                  <SpecRow
+                    icon="sell"
+                    label="Mode"
+                    value={land.mode === "location_vente" ? "Location ou vente" : land.mode}
+                  />
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <label
+
+              {/* Localisation */}
+              {(land.latitude && land.longitude) && (
+                <div className="dt-card">
+                  <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Localisation</h2>
+                  <p style={{ fontSize: 13, color: C.textSoft, marginBottom: 12 }}>
+                    GPS : <strong>{land.latitude.toFixed(5)}, {land.longitude.toFixed(5)}</strong>
+                  </p>
+                  <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                    <iframe
+                      title="map"
+                      width="100%"
+                      height="320"
+                      frameBorder="0"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${land.longitude - 0.05},${land.latitude - 0.05},${land.longitude + 0.05},${land.latitude + 0.05}&layer=mapnik&marker=${land.latitude},${land.longitude}`}
+                    />
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${land.latitude},${land.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      marginTop: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      color: C.primaryDark,
+                      fontWeight: 600,
+                      fontSize: 13,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+                    Ouvrir dans Google Maps
+                  </a>
+                </div>
+              )}
+
+              {/* Documents */}
+              {land.documents && land.documents.length > 0 && (
+                <div className="dt-card">
+                  <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
+                    Documents légaux
+                  </h2>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {land.documents.map((d) => (
+                      <div
+                        key={d.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          backgroundColor: C.bg,
+                          padding: "10px 14px",
+                          borderRadius: 8,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            className="material-symbols-outlined"
+                            style={{ color: C.primaryDark, fontSize: 20 }}
+                          >
+                            description
+                          </span>
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>
+                            {d.type.replace(/_/g, " ")}
+                          </span>
+                          {d.extracted_json && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: C.primaryDark,
+                                background: "rgba(29,158,117,.1)",
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                fontWeight: 600,
+                              }}
+                            >
+                              IA analysé
+                            </span>
+                          )}
+                        </div>
+                        <a
+                          href={d.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: C.primaryDark, fontSize: 13, fontWeight: 600 }}
+                        >
+                          Ouvrir
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Simulation ROI */}
+              {simulation && (
+                <div className="dt-card">
+                  <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
+                    Simulation ROI <span style={{ fontSize: 12, color: C.primary, fontWeight: 600 }}>IA</span>
+                  </h2>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: 12,
+                    }}
+                  >
+                    <SimRow
+                      label="Rendement estimé"
+                      value={
+                        simulation.estimated_yield_tons
+                          ? `${simulation.estimated_yield_tons} t/an`
+                          : "—"
+                      }
+                    />
+                    <SimRow
+                      label="Revenu annuel"
+                      value={
+                        simulation.estimated_revenue_dh
+                          ? `${Number(simulation.estimated_revenue_dh).toLocaleString("fr-FR")} DH`
+                          : "—"
+                      }
+                    />
+                    <SimRow
+                      label="ROI"
+                      value={simulation.roi_percent ? `${simulation.roi_percent}%` : "—"}
+                    />
+                  </div>
+                  {simulation.notes && (
+                    <p style={{ fontSize: 12, color: C.textSoft, marginTop: 12, fontStyle: "italic" }}>
+                      {simulation.notes}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT — Sticky sidebar */}
+            <div style={{ position: "sticky", top: 90, alignSelf: "flex-start" }}>
+              <div className="dt-card" style={{ marginBottom: 16 }}>
+                {(land.price_per_year || land.price_sale) && (
+                  <div style={{ marginBottom: 16 }}>
+                    {land.price_per_year && (
+                      <div style={{ marginBottom: 8 }}>
+                        <p style={{ fontSize: 11, color: C.textSoft, fontWeight: 600, textTransform: "uppercase" }}>
+                          Loyer / an
+                        </p>
+                        <p style={{ fontSize: 26, fontWeight: 700, color: C.primaryDark }}>
+                          {Number(land.price_per_year).toLocaleString("fr-FR")} DH
+                        </p>
+                      </div>
+                    )}
+                    {land.price_sale && (
+                      <div>
+                        <p style={{ fontSize: 11, color: C.textSoft, fontWeight: 600, textTransform: "uppercase" }}>
+                          Prix de vente
+                        </p>
+                        <p style={{ fontSize: 22, fontWeight: 700, color: C.text }}>
+                          {Number(land.price_sale).toLocaleString("fr-FR")} DH
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Score Légal */}
+                <div
                   style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    color: "#3d4943",
-                  }}
-                >
-                  Durée d'engagement
-                </label>
-                <select
-                  style={{
-                    width: "100%",
+                    backgroundColor: C.bg,
+                    border: `1px solid ${C.border}`,
                     borderRadius: 8,
-                    border: "1px solid rgba(188,202,193,0.5)",
-                    backgroundColor: "#f5fbf5",
-                    padding: "12px 16px",
-                    fontSize: 14,
-                    outline: "none",
+                    padding: 12,
+                    marginBottom: 16,
                   }}
                 >
-                  <option>1 an</option>
-                  <option>3 ans</option>
-                  <option selected>5 ans</option>
-                  <option>10 ans</option>
-                </select>
-              </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 12 }}
-              >
-                <button
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: C.textSoft, fontWeight: 700, textTransform: "uppercase" }}>
+                      Score Légal IA
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: scoreColor }}>{score}/100</span>
+                  </div>
+                  <div style={{ width: "100%", height: 6, backgroundColor: C.border, borderRadius: 999, overflow: "hidden" }}>
+                    <div style={{ width: `${score}%`, height: "100%", backgroundColor: scoreColor }} />
+                  </div>
+                </div>
+
+                {/* Contact */}
+                <div
                   style={{
-                    width: "100%",
-                    background: "linear-gradient(to bottom, #1D9E75, #15805e)",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
+                    backgroundColor: "rgba(29,158,117,.06)",
+                    border: `1px solid rgba(29,158,117,.2)`,
+                    borderRadius: 10,
                     padding: 16,
+                    marginBottom: 14,
+                  }}
+                >
+                  <p style={{ fontSize: 12, color: C.textSoft, fontWeight: 600, marginBottom: 8, textTransform: "uppercase" }}>
+                    Contact propriétaire
+                  </p>
+                  {contact && !isMasked ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <ContactRow icon="person" value={land.owner?.nom || "Propriétaire"} />
+                      {contact.phone && <ContactRow icon="phone" value={contact.phone} link={`tel:${contact.phone}`} />}
+                      {contact.whatsapp && (
+                        <ContactRow
+                          icon="chat"
+                          value={`WhatsApp: ${contact.whatsapp}`}
+                          link={`https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}`}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: C.textSoft,
+                          fontFamily: "monospace",
+                          backgroundColor: "#fff",
+                          padding: 10,
+                          borderRadius: 6,
+                          border: `1px dashed ${C.border}`,
+                          marginBottom: 10,
+                        }}
+                      >
+                        +212 6•• ••• •••
+                      </div>
+                      <p style={{ fontSize: 12, color: C.textSoft, marginBottom: 10 }}>
+                        Débloquez le contact pour <strong>10 crédits</strong>
+                        {user && ` (solde: ${user.credits ?? 0})`}
+                      </p>
+                      <button
+                        onClick={handleUnlock}
+                        disabled={unlocking}
+                        style={{
+                          width: "100%",
+                          padding: 12,
+                          backgroundColor: C.primaryDark,
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>lock_open</span>
+                        {unlocking ? "Déblocage..." : "Débloquer (−10 cr)"}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Faire une offre */}
+                <button
+                  onClick={() => setShowOfferModal(true)}
+                  style={{
+                    width: "100%",
+                    padding: 14,
+                    backgroundColor: "#fff",
+                    color: C.primaryDark,
+                    border: `2px solid ${C.primaryDark}`,
                     borderRadius: 8,
-                    border: "none",
+                    fontWeight: 700,
+                    fontSize: 14,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    boxShadow: "0 4px 12px rgba(29,158,117,0.2)",
                   }}
                 >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 14 }}
-                  >
-                    handshake
-                  </span>{" "}
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>handshake</span>
                   Faire une offre
                 </button>
-                <button
-                  style={{
-                    width: "100%",
-                    backgroundColor: "#fff",
-                    border: "1px solid #E8F5F1",
-                    color: "#171d1a",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    padding: 16,
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 14 }}
-                  >
-                    chat_bubble
-                  </span>{" "}
-                  Contacter
-                </button>
-              </div>
-            </div>
-
-            {/* Legal Score */}
-            <div
-              style={{
-                backgroundColor: "#fff",
-                borderRadius: 12,
-                border: "1px solid rgba(188,202,193,0.5)",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                className="bg-zellige"
-                style={{
-                  padding: 24,
-                  borderBottom: "1px solid rgba(188,202,193,0.3)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
-                  Score Légal ArdMarket
-                </h3>
-                <div
-                  style={{
-                    position: "relative",
-                    width: 128,
-                    height: 128,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <svg
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      transform: "rotate(-90deg)",
-                    }}
-                    viewBox="0 0 36 36"
-                  >
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="#e4eae4"
-                      strokeWidth="3"
-                    />
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="#1D9E75"
-                      strokeDasharray="98, 100"
-                      strokeLinecap="round"
-                      strokeWidth="3"
-                    />
-                  </svg>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 32,
-                        fontWeight: 700,
-                        letterSpacing: "-0.02em",
-                      }}
-                    >
-                      98
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: "#3d4943",
-                      }}
-                    >
-                      /100
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: 20,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                }}
-              >
-                {[
-                  ["Vérification du Titre", "Validé"],
-                  ["Droits d'Exploitation", "Validé"],
-                  ["Historique des Saisies", "Vierge"],
-                ].map(([label, status]) => (
-                  <div
-                    key={label}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ fontSize: 14, color: "#1D9E75" }}
-                      >
-                        check_circle
-                      </span>
-                      <span style={{ fontSize: 14 }}>{label}</span>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        letterSpacing: "0.05em",
-                        color: "#1D9E75",
-                      }}
-                    >
-                      {status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Escrow */}
-            <div
-              style={{
-                backgroundColor: "#F5FBF5",
-                borderRadius: 12,
-                border: "1px solid rgba(29,158,117,0.2)",
-                padding: 20,
-                display: "flex",
-                gap: 16,
-                boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
-              }}
-            >
-              <div
-                style={{
-                  flexShrink: 0,
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  backgroundColor: "#E8F5F1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span
-                  className="material-symbols-outlined fill-icon"
-                  style={{ color: "#1D9E75" }}
-                >
-                  shield
-                </span>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    display: "block",
-                    marginBottom: 4,
-                  }}
-                >
-                  Paiement Sécurisé (Escrow)
-                </span>
-                <p style={{ fontSize: 14, color: "#3d4943" }}>
-                  Vos fonds sont conservés en toute sécurité sur un compte
-                  séquestre jusqu'à la signature finale du contrat de bail.
-                </p>
               </div>
             </div>
           </div>
         </main>
+
+        {/* Offer modal */}
+        {showOfferModal && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0,0,0,.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+              padding: 20,
+            }}
+            onClick={() => setShowOfferModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                padding: 28,
+                maxWidth: 480,
+                width: "100%",
+              }}
+            >
+              <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Faire une offre</h2>
+              <p style={{ fontSize: 13, color: C.textSoft, marginBottom: 20 }}>
+                Pour : <strong>{land.title}</strong>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: C.textSoft,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Montant proposé (DH)
+                  </label>
+                  <input
+                    className="dt-input"
+                    type="number"
+                    placeholder="Ex: 450000"
+                    value={offerPrice}
+                    onChange={(e) => setOfferPrice(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: C.textSoft,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Durée (années)
+                  </label>
+                  <input
+                    className="dt-input"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={offerYears}
+                    onChange={(e) => setOfferYears(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: C.textSoft,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Message (optionnel)
+                  </label>
+                  <textarea
+                    className="dt-input"
+                    rows={3}
+                    placeholder="Présentez votre projet..."
+                    value={offerMessage}
+                    onChange={(e) => setOfferMessage(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                <button
+                  onClick={() => setShowOfferModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    background: "#fff",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={submitOffer}
+                  disabled={offerSubmitting}
+                  style={{
+                    flex: 2,
+                    padding: 12,
+                    backgroundColor: C.primaryDark,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {offerSubmitting ? "Envoi..." : "Envoyer l'offre"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
+  );
+}
+
+function SpecRow({ icon, label, value }) {
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <span
+        className="material-symbols-outlined"
+        style={{
+          color: C.primary,
+          fontSize: 22,
+          backgroundColor: "rgba(29,158,117,.08)",
+          padding: 8,
+          borderRadius: 8,
+        }}
+      >
+        {icon}
+      </span>
+      <div>
+        <p
+          style={{
+            fontSize: 11,
+            color: C.textSoft,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: ".05em",
+          }}
+        >
+          {label}
+        </p>
+        <p
+          style={{ fontSize: 14, fontWeight: 600, marginTop: 2, textTransform: "capitalize" }}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SimRow({ label, value }) {
+  return (
+    <div
+      style={{
+        backgroundColor: C.bg,
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        padding: 12,
+      }}
+    >
+      <p style={{ fontSize: 11, color: C.textSoft, fontWeight: 600, textTransform: "uppercase" }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 16, fontWeight: 700, marginTop: 4, color: C.primaryDark }}>{value}</p>
+    </div>
+  );
+}
+
+function ContactRow({ icon, value, link }) {
+  const inner = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span className="material-symbols-outlined" style={{ fontSize: 18, color: C.primaryDark }}>
+        {icon}
+      </span>
+      <span style={{ fontSize: 14, fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+  return link ? (
+    <a href={link} target="_blank" rel="noreferrer" style={{ color: C.text, textDecoration: "none" }}>
+      {inner}
+    </a>
+  ) : (
+    inner
   );
 }
