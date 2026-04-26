@@ -1,8 +1,10 @@
 // Connexion.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 export default function Connexion() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,23 +31,12 @@ export default function Connexion() {
       // 4. Rediriger en fonction du rôle
       const role = userData.role?.toLowerCase();
 
-      if (
-        role === "agriculteur" ||
-        role === "farmer" ||
-        role === "agriculteur"
-      ) {
-        // Rediriger vers le dashboard agriculteur
-        window.location.href = "/dashboard-agriculteur";
-      } else if (
-        role === "investisseur" ||
-        role === "investor" ||
-        role === "investisseur"
-      ) {
-        // Rediriger vers le dashboard investisseur
-        window.location.href = "/dashboard-investisseur";
+      if (role === "agriculteur" || role === "farmer") {
+        navigate("/dashboard-agriculteur");
+      } else if (role === "investisseur" || role === "investor") {
+        navigate("/dashboard-investisseur");
       } else {
-        // Rôle par défaut ou non spécifié
-        window.location.href = "/dashboard";
+        navigate("/dashboard-investisseur");
       }
     } catch (err) {
       setError(err.message || "Email ou mot de passe incorrect");
@@ -121,41 +112,30 @@ export default function Connexion() {
           </div>
           <nav style={{ display: "flex", gap: 32, alignItems: "center" }}>
             {[
-              { label: "Explorer", href: "/" },
-              { label: "Comment ça marche", href: "/how-it-works" },
-              { label: "Assistance", href: "/support" },
-            ].map(({ label, href }) => (
-              <a
+              { label: "Accueil", to: "/" },
+              { label: "Marketplace", to: "/marketplace" },
+              { label: "Notaires", to: "/notaires" },
+            ].map(({ label, to }) => (
+              <button
                 key={label}
-                href={href}
+                onClick={() => navigate(to)}
                 style={{
                   fontSize: 14,
                   fontWeight: 500,
                   color: "#4b5563",
-                  textDecoration: "none",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
                   paddingBottom: 4,
                 }}
               >
                 {label}
-              </a>
+              </button>
             ))}
           </nav>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <button
-              onClick={() => (window.location.href = "/connexion")}
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#00694c",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Se connecter
-            </button>
-            <button
-              onClick={() => (window.location.href = "/publier")}
+              onClick={() => navigate("/inscription")}
               style={{
                 backgroundColor: "#00694c",
                 color: "#fff",
@@ -168,7 +148,7 @@ export default function Connexion() {
                 boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
               }}
             >
-              Publier une annonce
+              S'inscrire
             </button>
           </div>
         </header>
@@ -317,17 +297,21 @@ export default function Connexion() {
                       >
                         Mot de passe
                       </label>
-                      <a
-                        href="/mot-de-passe-oublie"
+                      <button
+                        type="button"
+                        onClick={() => alert("Fonctionnalité bientôt disponible — contactez le support.")}
                         style={{
                           fontSize: 12,
                           fontWeight: 600,
                           color: "#00694c",
                           textDecoration: "none",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
                         }}
                       >
                         Oublié ?
-                      </a>
+                      </button>
                     </div>
                     <input
                       id="password"
@@ -478,16 +462,21 @@ export default function Connexion() {
                 <div style={{ marginTop: 40, textAlign: "center" }}>
                   <p style={{ fontSize: 14, color: "#3d4943" }}>
                     Pas encore de compte ?{" "}
-                    <a
-                      href="/inscription"
+                    <button
+                      type="button"
+                      onClick={() => navigate("/inscription")}
                       style={{
                         color: "#00694c",
                         fontWeight: 600,
                         textDecoration: "none",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 14,
                       }}
                     >
                       S'inscrire
-                    </a>
+                    </button>
                   </p>
                 </div>
               </form>

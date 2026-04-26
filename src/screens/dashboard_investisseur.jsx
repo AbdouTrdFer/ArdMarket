@@ -1,6 +1,6 @@
 // DashboardInvestisseur.jsx - branché sur l'API backend
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "../services/api";
 
 const REGIONS = ["Meknès", "Souss", "Gharb", "Haouz", "Taroudant", "Beni Mellal"];
@@ -26,6 +26,7 @@ const FALLBACK_IMG =
 
 export default function DashboardInvestisseur() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [lands, setLands] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,8 +153,9 @@ export default function DashboardInvestisseur() {
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: "pointer",
-                  background: window.location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
-                  color: window.location.pathname === n.to ? C.primaryDark : C.text,
+                  transition: "background-color 0.2s, color 0.2s",
+                  background: location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
+                  color: location.pathname === n.to ? C.primaryDark : C.text,
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>

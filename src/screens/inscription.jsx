@@ -1,5 +1,6 @@
 // Inscription.jsx - Version corrigée pour correspondre au backend
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 function MaterialIcon({ name, fill = false, className = "" }) {
@@ -18,6 +19,7 @@ function MaterialIcon({ name, fill = false, className = "" }) {
 }
 
 export default function Inscription() {
+  const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState("agriculteur");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -133,7 +135,7 @@ export default function Inscription() {
 
       // Redirection après 2 secondes
       setTimeout(() => {
-        window.location.href = `/connexion?registered=true&email=${encodeURIComponent(formData.email)}`;
+        navigate(`/connexion?registered=true&email=${encodeURIComponent(formData.email)}`);
       }, 2000);
     } catch (err) {
       console.error("❌ Erreur complète:", err);
@@ -236,7 +238,7 @@ export default function Inscription() {
               color: "#065f46",
               cursor: "pointer",
             }}
-            onClick={() => (window.location.href = "/")}
+            onClick={() => navigate("/")}
           >
             ArdMarket
           </div>
@@ -258,7 +260,7 @@ export default function Inscription() {
           </nav>
           <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
             <button
-              onClick={() => (window.location.href = "/connexion")}
+              onClick={() => navigate("/connexion")}
               style={{
                 fontSize: 14,
                 fontWeight: 500,
@@ -271,7 +273,7 @@ export default function Inscription() {
               Se connecter
             </button>
             <button
-              onClick={() => (window.location.href = "/publier")}
+              onClick={() => navigate("/publier-terrain")}
               style={{
                 backgroundColor: "#00694c",
                 color: "#fff",
@@ -331,7 +333,7 @@ export default function Inscription() {
                 }}
               >
                 <button
-                  onClick={() => (window.location.href = "/")}
+                  onClick={() => navigate("/")}
                   style={{
                     padding: 4,
                     background: "none",
@@ -923,14 +925,16 @@ export default function Inscription() {
                     >
                       J'accepte les{" "}
                       <a
-                        href="/conditions"
+                        href="#"
+                        onClick={(e) => e.preventDefault()}
                         style={{ color: "#00694c", textDecoration: "none" }}
                       >
                         Conditions Générales
                       </a>{" "}
                       et la{" "}
                       <a
-                        href="/confidentialite"
+                        href="#"
+                        onClick={(e) => e.preventDefault()}
                         style={{ color: "#00694c", textDecoration: "none" }}
                       >
                         Politique de Confidentialité
@@ -972,16 +976,21 @@ export default function Inscription() {
                 >
                   <p style={{ fontSize: 14, color: "#3d4943" }}>
                     Vous avez déjà un compte ?{" "}
-                    <a
-                      href="/connexion"
+                    <button
+                      type="button"
+                      onClick={() => navigate("/connexion")}
                       style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 14,
                         fontWeight: 600,
                         color: "#00694c",
                         textDecoration: "none",
                       }}
                     >
                       Connectez-vous
-                    </a>
+                    </button>
                   </p>
                 </div>
               </div>
