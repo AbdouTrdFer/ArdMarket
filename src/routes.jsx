@@ -17,6 +17,7 @@ import DashboardAgriculteurDarija from "./screens/dashboard_agriculteurDarija";
 import DashboardInvestisseurDarija from "./screens/dashboard_investisseurDarija";
 import DetailTerrainDarija from "./screens/detail_terrainDarija";
 import LandingPageDarija from "./screens/landingDarija";
+import AdminSync from "./screens/admin_sync";
 
 const routes = createBrowserRouter([
   {
@@ -63,6 +64,9 @@ const routes = createBrowserRouter([
 
       // Landing Darija
       { path: "/landing-darija", element: <LandingPageDarija /> },
+
+      // Admin / sync Telegram bot (Firebase)
+      { path: "/admin/sync", element: <AdminSync /> },
     ],
   },
 ]);

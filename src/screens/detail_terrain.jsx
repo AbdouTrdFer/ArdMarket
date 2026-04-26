@@ -299,9 +299,30 @@ export default function DetailTerrain() {
         <main style={{ maxWidth: 1280, margin: "0 auto", padding: "24px" }}>
           {/* Title row */}
           <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: ".1em" }}>
-              {land.region}{land.commune ? ` · ${land.commune}` : ""}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: ".1em", margin: 0 }}>
+                {land.region}{land.commune ? ` · ${land.commune}` : ""}
+              </p>
+              {land.source === "telegram_bot" && (
+                <span
+                  title="Annonce soumise par le paysan en darija via le bot Telegram, données extraites par IA"
+                  style={{
+                    backgroundColor: "#e0f2fe",
+                    color: "#0369a1",
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>smart_toy</span>
+                  Bot Telegram (Darija) · IA
+                </span>
+              )}
+            </div>
             <h1 style={{ fontSize: 36, fontWeight: 700, marginTop: 4, letterSpacing: "-.02em" }}>
               {land.title}
             </h1>

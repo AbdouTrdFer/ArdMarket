@@ -60,6 +60,7 @@ router.get("/", authOptional, (req, res) => {
     price_min,
     price_max,
     status,
+    source,
     sort,
   } = req.query;
 
@@ -109,6 +110,10 @@ router.get("/", authOptional, (req, res) => {
   if (price_max) {
     where.push("COALESCE(price_per_year, price_sale) <= ?");
     params.push(Number(price_max));
+  }
+  if (source) {
+    where.push("source = ?");
+    params.push(source);
   }
 
   // Tri: boost en priorité, puis par date

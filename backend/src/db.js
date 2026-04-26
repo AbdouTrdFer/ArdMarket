@@ -159,3 +159,28 @@ export function migrate() {
 }
 
 migrate();
+
+// Migrations additives idempotentes (pour ne pas casser les données existantes)
+function safeAddColumn(table, col, def) {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+  } catch {
+    // colonne déjà présente, ignore
+  }
+}
+
+safeAddColumn("users", "telegram_id", "TEXT");
+safeAddColumn("lands", "source", "TEXT DEFAULT 'manual'");
+safeAddColumn("lands", "firebase_listing_id", "TEXT");
+safeAddColumn("lands", "tf_number", "TEXT");
+safeAddColumn("lands", "owner_claimed_name", "TEXT");
+safeAddColumn("lands", "duration_months", "INTEGER");
+safeAddColumn("land_documents", "external_url", "TEXT");
+
+try {
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id) WHERE telegram_id IS NOT NULL");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_lands_firebase ON lands(firebase_listing_id) WHERE firebase_listing_id IS NOT NULL");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_lands_source ON lands(source)");
+} catch {
+  // ignore
+}
