@@ -241,12 +241,11 @@ export default function LandingPage() {
                 ArdMarket
               </span>
             </div>
-            <nav style={{ display: "flex", gap: 32, alignItems: "center" }}>
+            <nav style={{ display: "flex", gap: 24, alignItems: "center" }}>
               {[
                 { label: "Comment ça marche", href: "#how" },
                 { label: "Fonctionnalités", href: "#features" },
                 { label: "Tarifs", href: "#pricing" },
-                { label: "FAQ", href: "#faq" },
               ].map(({ label, href }) => (
                 <a
                   key={label}
@@ -261,6 +260,28 @@ export default function LandingPage() {
                   {label}
                 </a>
               ))}
+              <span
+                onClick={() => navigate("/marketplace")}
+                style={{
+                  color: C.textSoft,
+                  fontWeight: 500,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Marketplace
+              </span>
+              <span
+                onClick={() => navigate("/notaires")}
+                style={{
+                  color: C.textSoft,
+                  fontWeight: 500,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Notaires
+              </span>
             </nav>
             <div style={{ display: "flex", gap: 12 }}>
               <button className="lp-btn-secondary" onClick={goLogin}>

@@ -134,7 +134,36 @@ export default function DashboardInvestisseur() {
               ArdMarket
             </span>
           </div>
-          <div style={{ flex: 1, maxWidth: 480, position: "relative" }}>
+          <nav style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {[
+              { label: "Terres", to: "/dashboard-investisseur", icon: "landscape" },
+              { label: "Marketplace", to: "/marketplace", icon: "storefront" },
+              { label: "Notaires", to: "/notaires", icon: "gavel" },
+            ].map((n) => (
+              <span
+                key={n.to}
+                onClick={() => navigate(n.to)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  background: window.location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
+                  color: window.location.pathname === n.to ? C.primaryDark : C.text,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  {n.icon}
+                </span>
+                {n.label}
+              </span>
+            ))}
+          </nav>
+          <div style={{ flex: 1, maxWidth: 360, position: "relative" }}>
             <span
               className="material-symbols-outlined"
               style={{

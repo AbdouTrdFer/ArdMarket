@@ -276,10 +276,40 @@ export default function DashboardAgriculteur() {
                   letterSpacing: "-0.05em",
                   cursor: "pointer",
                 }}
-                onClick={() => (window.location.href = "/")}
+                onClick={() => navigate("/")}
               >
                 ArdMarket
               </div>
+              <nav style={{ display: "flex", gap: 4, alignItems: "center", marginLeft: 16 }}>
+                {[
+                  { label: "Mon dashboard", to: "/dashboard-agriculteur", icon: "dashboard" },
+                  { label: "Marketplace", to: "/marketplace", icon: "storefront" },
+                  { label: "Notaires", to: "/notaires", icon: "gavel" },
+                ].map((n) => (
+                  <span
+                    key={n.to}
+                    onClick={() => navigate(n.to)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "8px 12px",
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      background:
+                        window.location.pathname === n.to ? "rgba(29,158,117,.12)" : "transparent",
+                      color: window.location.pathname === n.to ? "#00694c" : "#171d1a",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                      {n.icon}
+                    </span>
+                    {n.label}
+                  </span>
+                ))}
+              </nav>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <button
