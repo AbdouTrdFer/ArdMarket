@@ -10,6 +10,9 @@ import planRoutes from "./routes/plans.js";
 import adsRoutes from "./routes/ads.js";
 import notariesRoutes from "./routes/notaries.js";
 import aiRoutes from "./routes/ai.js";
+import syncRoutes from "./routes/sync.js";
+import { isFirebaseConfigured } from "./services/firebase.js";
+import { startAutoSync } from "./services/firebaseSync.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,6 +40,7 @@ app.use("/api", notariesRoutes);
 app.use("/api/ai", aiRoutes);
 // Alias pratique pour le webhook
 app.use("/api", aiRoutes);
+app.use("/api", syncRoutes);
 
 // index des routes pour debug
 app.get("/api", (_req, res) => {
@@ -73,6 +77,8 @@ app.get("/api", (_req, res) => {
       "POST /api/ai/analyze-document",
       "POST /api/ai/voice-to-land",
       "POST /api/whatsapp/webhook",
+      "POST /api/sync/firebase",
+      "GET  /api/sync/status",
     ],
   });
 });
@@ -86,4 +92,17 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`[ArdMarket] API prête sur http://localhost:${PORT}`);
+
+  // Démarre la synchro automatique Firebase si configurée
+  if (isFirebaseConfigured()) {
+    const intervalMin = Number(process.env.FIREBASE_AUTOSYNC_INTERVAL_MIN || 5);
+    if (intervalMin > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[ArdMarket] Auto-sync Firebase activé (toutes les ${intervalMin} min)`);
+      startAutoSync({ intervalMs: intervalMin * 60 * 1000 });
+    }
+  } else {
+    // eslint-disable-next-line no-console
+    console.log("[ArdMarket] Firebase non configuré (sync désactivée)");
+  }
 });

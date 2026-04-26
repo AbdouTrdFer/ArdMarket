@@ -195,6 +195,10 @@ export const api = {
   voiceToLand: (payload) =>
     request("/ai/voice-to-land", { method: "POST", body: payload }),
 
+  // Sync (Telegram bot Firebase → ArdMarket)
+  syncStatus: () => request("/sync/status"),
+  triggerSync: () => request("/sync/firebase", { method: "POST", auth: true }),
+
   // Health
   health: () => request("/health"),
 };

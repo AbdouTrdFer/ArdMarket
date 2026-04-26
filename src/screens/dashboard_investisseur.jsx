@@ -548,6 +548,29 @@ function LandCard({ land, onClick }) {
             BOOST
           </div>
         )}
+        {land.source === "telegram_bot" && (
+          <div
+            title="Annonce soumise par le paysan via le bot Telegram en darija"
+            style={{
+              position: "absolute",
+              bottom: 12,
+              left: 12,
+              backgroundColor: "rgba(255,255,255,.95)",
+              color: "#0088cc",
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>smart_toy</span>
+            Bot Telegram (Darija)
+          </div>
+        )}
       </div>
       <div style={{ padding: 18 }}>
         <h3

@@ -6,3 +6,6 @@ data/*.sqlite-shm
 data/*.sqlite-wal
 uploads/*
 !uploads/.gitkeep
+secrets/
+*.firebase.json
+firebase-service-account*.json
