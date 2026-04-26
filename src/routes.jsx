@@ -8,6 +8,9 @@ import DashboardInvestisseur from "./screens/dashboard_investisseur";
 import DetailTerrain from "./screens/detail_terrain";
 import PublierTerrain from "./screens/publier_terrain";
 import Profil from "./screens/profil";
+import Marketplace from "./screens/marketplace";
+import Notaires from "./screens/notaires";
+import NotaireDetail from "./screens/notaire_detail";
 import ConnexionDarija from "./screens/connexionDarija";
 import InscriptionDarija from "./screens/inscriptionDarija";
 import DashboardAgriculteurDarija from "./screens/dashboard_agriculteurDarija";
@@ -51,6 +54,12 @@ const routes = createBrowserRouter([
       // Profil
       { path: "/profil", element: <Profil /> },
       { path: "/mon-compte", element: <Profil /> },
+
+      // Marketplace ads & Notaires
+      { path: "/marketplace", element: <Marketplace /> },
+      { path: "/fournisseurs", element: <Marketplace /> },
+      { path: "/notaires", element: <Notaires /> },
+      { path: "/notaire/:id", element: <NotaireDetail /> },
 
       // Landing Darija
       { path: "/landing-darija", element: <LandingPageDarija /> },

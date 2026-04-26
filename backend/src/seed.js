@@ -13,6 +13,8 @@ db.exec(`
   DELETE FROM land_documents;
   DELETE FROM land_images;
   DELETE FROM lands;
+  DELETE FROM notary_reviews;
+  DELETE FROM notary_profiles;
   DELETE FROM users;
   DELETE FROM sqlite_sequence;
 `);
@@ -128,6 +130,7 @@ const users = [
     email: "hassan.notaire@ardmarket.ma",
     password: "password123",
     phone: "+212680123456",
+    whatsapp: "+212680123456",
     region: "Marrakech",
     plan: "premium",
   },
@@ -137,7 +140,36 @@ const users = [
     email: "nadia.notaire@ardmarket.ma",
     password: "password123",
     phone: "+212681234567",
+    whatsapp: "+212681234567",
     region: "Meknès",
+  },
+  {
+    role: "notaire",
+    nom: "Me. Youssef Tahiri",
+    email: "youssef.notaire@ardmarket.ma",
+    password: "password123",
+    phone: "+212682345678",
+    whatsapp: "+212682345678",
+    region: "Taroudant",
+    plan: "premium",
+  },
+  {
+    role: "notaire",
+    nom: "Me. Aïcha Benkirane",
+    email: "aicha.notaire@ardmarket.ma",
+    password: "password123",
+    phone: "+212683456789",
+    whatsapp: "+212683456789",
+    region: "Gharb",
+  },
+  {
+    role: "notaire",
+    nom: "Me. Karim Lahlou",
+    email: "karim.notaire@ardmarket.ma",
+    password: "password123",
+    phone: "+212684567890",
+    whatsapp: "+212684567890",
+    region: "Beni Mellal",
   },
   {
     role: "fournisseur",
@@ -145,6 +177,22 @@ const users = [
     email: "agrisupply@ardmarket.ma",
     password: "password123",
     phone: "+212522334455",
+    region: "Casablanca",
+  },
+  {
+    role: "fournisseur",
+    nom: "Semences du Souss",
+    email: "semences-souss@ardmarket.ma",
+    password: "password123",
+    phone: "+212528998877",
+    region: "Souss",
+  },
+  {
+    role: "fournisseur",
+    nom: "Hydro-Irrigation MA",
+    email: "hydro-irrigation@ardmarket.ma",
+    password: "password123",
+    phone: "+212523445566",
     region: "Casablanca",
   },
 ];
@@ -167,11 +215,144 @@ for (const u of users) {
     plan: u.plan ?? "free",
     credits: u.credits ?? 0,
     boost_expires_at:
-      u.email === "hassan.notaire@ardmarket.ma"
+      ["hassan.notaire@ardmarket.ma", "youssef.notaire@ardmarket.ma"].includes(u.email)
         ? new Date(Date.now() + 30 * 86400 * 1000).toISOString()
         : null,
   });
   userIds[u.email] = r.lastInsertRowid;
+}
+
+// --- NOTARY PROFILES + REVIEWS ------------------------------------------
+const insertNotaryProfile = db.prepare(
+  `INSERT INTO notary_profiles (user_id, photo_url, bio, address, city, years_experience, contracts_count, specialties, languages, hourly_rate, rating_avg, rating_count, verified)
+   VALUES (@user_id, @photo_url, @bio, @address, @city, @years_experience, @contracts_count, @specialties, @languages, @hourly_rate, @rating_avg, @rating_count, @verified)`,
+);
+
+const notaryProfiles = [
+  {
+    email: "hassan.notaire@ardmarket.ma",
+    photo_url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
+    bio: "15 ans d'expérience en droit foncier agricole et contrats de location longue durée. Spécialiste des titres melkia et des successions.",
+    address: "45 Avenue Mohammed VI, Guéliz",
+    city: "Marrakech",
+    years_experience: 15,
+    contracts_count: 240,
+    specialties: ["foncier_agricole", "location_longue_duree", "successions", "melkia"],
+    languages: ["Arabe", "Français", "Anglais", "Tachelhit"],
+    hourly_rate: 1200,
+    verified: 1,
+  },
+  {
+    email: "nadia.notaire@ardmarket.ma",
+    photo_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
+    bio: "Notaire à Meknès, experte en transactions foncières et baux ruraux. Accompagnement bilingue arabe/français.",
+    address: "12 Rue Antsirabe, Hamria",
+    city: "Meknès",
+    years_experience: 10,
+    contracts_count: 150,
+    specialties: ["baux_ruraux", "vente_terrains", "foncier_agricole"],
+    languages: ["Arabe", "Français"],
+    hourly_rate: 900,
+    verified: 1,
+  },
+  {
+    email: "youssef.notaire@ardmarket.ma",
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+    bio: "Spécialiste agrumiculture et exportation. Cabinet basé à Taroudant, accompagne les exploitants du Souss-Massa.",
+    address: "Quartier Erracha",
+    city: "Taroudant",
+    years_experience: 12,
+    contracts_count: 180,
+    specialties: ["foncier_agricole", "export", "vente_terrains", "location_longue_duree"],
+    languages: ["Arabe", "Français", "Tachelhit"],
+    hourly_rate: 1000,
+    verified: 1,
+  },
+  {
+    email: "aicha.notaire@ardmarket.ma",
+    photo_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400",
+    bio: "Notaire experte en mode coopérative et propriétés collectives dans la région du Gharb.",
+    address: "6 Avenue Hassan II",
+    city: "Sidi Slimane",
+    years_experience: 8,
+    contracts_count: 95,
+    specialties: ["cooperatives", "proprietes_collectives", "baux_ruraux"],
+    languages: ["Arabe", "Français"],
+    hourly_rate: 800,
+    verified: 0,
+  },
+  {
+    email: "karim.notaire@ardmarket.ma",
+    photo_url: "https://images.unsplash.com/photo-1556157382-97eda2d62296?w=400",
+    bio: "Notaire à Beni Mellal, traitement rapide des dossiers, focus sur les céréales et plaines fertiles.",
+    address: "Boulevard Mohammed V",
+    city: "Beni Mellal",
+    years_experience: 6,
+    contracts_count: 70,
+    specialties: ["foncier_agricole", "successions"],
+    languages: ["Arabe", "Français"],
+    hourly_rate: 700,
+    verified: 0,
+  },
+];
+
+for (const p of notaryProfiles) {
+  insertNotaryProfile.run({
+    user_id: userIds[p.email],
+    photo_url: p.photo_url,
+    bio: p.bio,
+    address: p.address,
+    city: p.city,
+    years_experience: p.years_experience,
+    contracts_count: p.contracts_count,
+    specialties: JSON.stringify(p.specialties),
+    languages: JSON.stringify(p.languages),
+    hourly_rate: p.hourly_rate,
+    rating_avg: 0,
+    rating_count: 0,
+    verified: p.verified,
+  });
+}
+
+// Reviews: generate a few per notary so rating shows up
+const insertReview = db.prepare(
+  `INSERT INTO notary_reviews (notary_id, author_id, author_name, rating, comment) VALUES (?, ?, ?, ?, ?)`,
+);
+const reviewsSeed = [
+  { email: "hassan.notaire@ardmarket.ma", reviews: [
+    { rating: 5, author: "Karim Benali", text: "Très professionnel, contrat finalisé en 8 jours." },
+    { rating: 5, author: "Sara Benchekroun", text: "Conseils précieux, recommandé." },
+    { rating: 4, author: "Ahmed Mansouri", text: "Bon accompagnement, prix correct." },
+  ]},
+  { email: "nadia.notaire@ardmarket.ma", reviews: [
+    { rating: 5, author: "Fatima El Ouazzani", text: "Très réactive et bilingue, parfait." },
+    { rating: 4, author: "Karim Benali", text: "Bonne expérience pour bail rural 10 ans." },
+  ]},
+  { email: "youssef.notaire@ardmarket.ma", reviews: [
+    { rating: 5, author: "Investisseur Casablanca", text: "Connaît parfaitement la zone agrumes Souss." },
+    { rating: 5, author: "Ahmed Mansouri", text: "Le meilleur de Taroudant pour le foncier." },
+    { rating: 4, author: "Sara Benchekroun", text: "Réponse rapide aux demandes." },
+    { rating: 5, author: "Karim Benali", text: "Pro, transparent, recommandé." },
+  ]},
+  { email: "aicha.notaire@ardmarket.ma", reviews: [
+    { rating: 4, author: "Mohamed Bensaid", text: "Très bien pour les coopératives." },
+  ]},
+  { email: "karim.notaire@ardmarket.ma", reviews: [
+    { rating: 4, author: "Fatima El Ouazzani", text: "Disponible et efficace." },
+    { rating: 3, author: "Sara Benchekroun", text: "Service correct, à recontacter." },
+  ]},
+];
+for (const r of reviewsSeed) {
+  const notaryId = userIds[r.email];
+  for (const rev of r.reviews) {
+    insertReview.run(notaryId, null, rev.author, rev.rating, rev.text);
+  }
+  const agg = db
+    .prepare(`SELECT AVG(rating) as avg, COUNT(*) as cnt FROM notary_reviews WHERE notary_id = ?`)
+    .get(notaryId);
+  db.prepare(
+    `UPDATE notary_profiles SET rating_avg = ?, rating_count = ? WHERE user_id = ?`,
+  ).run(agg.avg ?? 0, agg.cnt ?? 0, notaryId);
 }
 
 // --- LANDS ---------------------------------------------------------------
@@ -420,45 +601,113 @@ const insertAd = db.prepare(
    VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
 );
 const adv = userIds["agrisupply@ardmarket.ma"];
-insertAd.run(
-  adv,
-  "intrants",
-  "Semences certifiées -20%",
-  "Offre exclusive ArdMarket sur nos semences bio.",
-  null,
-  "https://agrisupply.ma",
-  3,
-);
-insertAd.run(
-  adv,
-  "machines",
-  "Location moissonneuse batteuse",
-  "Tarifs préférentiels pour la récolte 2025.",
-  null,
-  "https://agrisupply.ma",
-  1,
-);
-insertAd.run(
-  adv,
-  "engrais",
-  "Engrais NPK - promo été",
-  "Livraison offerte dès 500kg.",
-  null,
-  "https://agrisupply.ma",
-  2,
-);
+const advSemences = userIds["semences-souss@ardmarket.ma"];
+const advHydro = userIds["hydro-irrigation@ardmarket.ma"];
+const advNotaire = userIds["hassan.notaire@ardmarket.ma"];
+
+const adsSeed = [
+  {
+    user: adv,
+    category: "semences",
+    title: "Semences certifiées -20%",
+    description: "Blé, maïs, orge — semences certifiées ONSSA. Offre exclusive ArdMarket sur 500kg+.",
+    image_url: "https://images.unsplash.com/photo-1530507629858-e3759c3ce5e8?w=800",
+    target_url: "https://agrisupply.ma/semences",
+    boost_level: 3,
+  },
+  {
+    user: adv,
+    category: "engrais",
+    title: "Engrais NPK 15-15-15 — promo été",
+    description: "Livraison offerte dès 500kg. Adapté céréales, agrumes, oliviers.",
+    image_url: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800",
+    target_url: "https://agrisupply.ma/engrais",
+    boost_level: 2,
+  },
+  {
+    user: adv,
+    category: "machines",
+    title: "Location moissonneuse batteuse",
+    description: "Tarifs préférentiels pour la récolte 2025. Tracteurs et matériel.",
+    image_url: "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=800",
+    target_url: "https://agrisupply.ma/location",
+    boost_level: 1,
+  },
+  {
+    user: advSemences,
+    category: "semences",
+    title: "Plants de fraisiers Camarosa",
+    description: "Plants frigo-conservés haute qualité, livrés sous 48h sur Souss et Gharb.",
+    image_url: "https://images.unsplash.com/photo-1518635017498-87f514b751ba?w=800",
+    target_url: "https://semences-souss.ma",
+    boost_level: 2,
+  },
+  {
+    user: advSemences,
+    category: "intrants",
+    title: "Pack démarrage maraîcher",
+    description: "Semences + paillage + filets anti-insectes. Pour 1 hectare.",
+    image_url: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800",
+    target_url: "https://semences-souss.ma/pack",
+    boost_level: 0,
+  },
+  {
+    user: advHydro,
+    category: "machines",
+    title: "Système goutte-à-goutte clé-en-main",
+    description: "Étude + installation + maintenance. Économie d'eau jusqu'à 60%.",
+    image_url: "https://images.unsplash.com/photo-1586339949216-35c2747cc36d?w=800",
+    target_url: "https://hydro-irrigation.ma",
+    boost_level: 4,
+  },
+  {
+    user: advHydro,
+    category: "machines",
+    title: "Forage de puits + pompe solaire",
+    description: "Devis sous 24h, garantie 5 ans, financement Crédit Agricole disponible.",
+    image_url: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=800",
+    target_url: "https://hydro-irrigation.ma/forage",
+    boost_level: 1,
+  },
+  {
+    user: advNotaire,
+    category: "notaire",
+    title: "Me. Hassan Alaoui — 15 ans d'expérience",
+    description: "Spécialiste contrats fonciers agricoles. Cabinet à Marrakech.",
+    image_url: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800",
+    target_url: "/notaire/7",
+    boost_level: 5,
+  },
+];
+for (const a of adsSeed) {
+  insertAd.run(
+    a.user,
+    a.category,
+    a.title,
+    a.description,
+    a.image_url,
+    a.target_url,
+    a.boost_level,
+  );
+}
 
 console.log("✓ Seed terminé:");
 console.log("   Users:", db.prepare("SELECT COUNT(*) as c FROM users").get().c);
 console.log("   Lands:", db.prepare("SELECT COUNT(*) as c FROM lands").get().c);
 console.log("   Ads:", db.prepare("SELECT COUNT(*) as c FROM ads").get().c);
+console.log("   Notaires:", db.prepare("SELECT COUNT(*) as c FROM notary_profiles").get().c);
 console.log("\nComptes de test (mot de passe: password123):");
-console.log("  admin@ardmarket.ma           admin / plan enterprise");
-console.log("  ahmed@ardmarket.ma           agriculteur Taroudant");
-console.log("  fatima@ardmarket.ma          agriculteur Meknès");
-console.log("  mohamed@ardmarket.ma         agriculteur Gharb");
-console.log("  karim@ardmarket.ma           investisseur premium (50 crédits)");
-console.log("  sara@ardmarket.ma            investisseur free (0 crédits)");
-console.log("  hassan.notaire@ardmarket.ma  notaire boosté");
-console.log("  nadia.notaire@ardmarket.ma   notaire standard");
-console.log("  agrisupply@ardmarket.ma      fournisseur");
+console.log("  admin@ardmarket.ma             admin / plan enterprise");
+console.log("  ahmed@ardmarket.ma             agriculteur Taroudant");
+console.log("  fatima@ardmarket.ma            agriculteur Meknès");
+console.log("  mohamed@ardmarket.ma           agriculteur Gharb");
+console.log("  karim@ardmarket.ma             investisseur premium (50 crédits)");
+console.log("  sara@ardmarket.ma              investisseur free (0 crédits)");
+console.log("  hassan.notaire@ardmarket.ma    notaire boosté Marrakech");
+console.log("  nadia.notaire@ardmarket.ma     notaire Meknès");
+console.log("  youssef.notaire@ardmarket.ma   notaire boosté Taroudant");
+console.log("  aicha.notaire@ardmarket.ma     notaire Gharb");
+console.log("  karim.notaire@ardmarket.ma     notaire Beni Mellal");
+console.log("  agrisupply@ardmarket.ma        fournisseur intrants/engrais");
+console.log("  semences-souss@ardmarket.ma    fournisseur semences");
+console.log("  hydro-irrigation@ardmarket.ma  fournisseur irrigation");

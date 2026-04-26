@@ -163,10 +163,29 @@ export const api = {
     request("/me/boost", { method: "POST", body: payload, auth: true }),
 
   // Ads / Notaries
-  listAds: (category) =>
-    request(`/ads${category ? `?category=${category}` : ""}`),
-  listNotaries: (region) =>
-    request(`/notaries${region ? `?region=${encodeURIComponent(region)}` : ""}`),
+  listAds: (params = {}) => {
+    if (typeof params === "string") params = { category: params };
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== "")),
+    ).toString();
+    return request(`/ads${qs ? `?${qs}` : ""}`);
+  },
+  createAd: (payload) =>
+    request("/ads", { method: "POST", body: payload, auth: true }),
+  listNotaries: (params = {}) => {
+    if (typeof params === "string") params = { region: params };
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== "")),
+    ).toString();
+    return request(`/notaries${qs ? `?${qs}` : ""}`);
+  },
+  getNotary: (id) => request(`/notaries/${id}`),
+  reviewNotary: (id, payload) =>
+    request(`/notaries/${id}/reviews`, {
+      method: "POST",
+      body: payload,
+      auth: true,
+    }),
 
   // AI
   simulateYield: (payload) =>

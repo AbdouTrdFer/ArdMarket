@@ -122,11 +122,39 @@ export function migrate() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS notary_profiles (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      photo_url TEXT,
+      bio TEXT,
+      address TEXT,
+      city TEXT,
+      years_experience INTEGER DEFAULT 0,
+      contracts_count INTEGER DEFAULT 0,
+      specialties TEXT,
+      languages TEXT,
+      hourly_rate REAL,
+      rating_avg REAL DEFAULT 0,
+      rating_count INTEGER DEFAULT 0,
+      verified INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS notary_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      notary_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_name TEXT,
+      rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+      comment TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_lands_region ON lands(region);
     CREATE INDEX IF NOT EXISTS idx_lands_status ON lands(status);
     CREATE INDEX IF NOT EXISTS idx_lands_crop ON lands(crop_type);
     CREATE INDEX IF NOT EXISTS idx_offers_land ON offers(land_id);
     CREATE INDEX IF NOT EXISTS idx_offers_investor ON offers(investor_id);
+    CREATE INDEX IF NOT EXISTS idx_notary_reviews ON notary_reviews(notary_id);
   `);
 }
 

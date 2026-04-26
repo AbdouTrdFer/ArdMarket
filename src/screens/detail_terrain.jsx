@@ -31,11 +31,45 @@ export default function DetailTerrain() {
   const [offerSubmitting, setOfferSubmitting] = useState(false);
   const [offerSuccess, setOfferSuccess] = useState("");
   const [simulation, setSimulation] = useState(null);
+  const [ads, setAds] = useState([]);
+  const [notaries, setNotaries] = useState([]);
 
   useEffect(() => {
-    api.me().then((r) => setUser(r.user || r)).catch(() => {});
-    loadLand();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    api.me().then((r) => { if (!cancelled) setUser(r.user || r); }).catch(() => {});
+    api.listAds().then((r) => { if (!cancelled) setAds(r.items || []); }).catch(() => {});
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await api.getLand(id);
+        if (cancelled) return;
+        setLand(data);
+        api.simulateLand(id, {}).then((s) => { if (!cancelled) setSimulation(s); }).catch(() => {});
+        try {
+          const r = await api.listNotaries({ region: data.region });
+          let items = r.items || [];
+          if (items.length < 3) {
+            const rr = await api.listNotaries({});
+            const all = rr.items || [];
+            const seen = new Set(items.map((n) => n.id));
+            for (const n of all) {
+              if (!seen.has(n.id)) {
+                items.push(n);
+                seen.add(n.id);
+              }
+              if (items.length >= 3) break;
+            }
+          }
+          if (!cancelled) setNotaries(items.slice(0, 3));
+        } catch { /* ignore */ }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Terrain introuvable");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [id]);
 
   const loadLand = async () => {
@@ -48,6 +82,33 @@ export default function DetailTerrain() {
       api
         .simulateLand(id, {})
         .then(setSimulation)
+        .catch(() => {});
+      // Charge les notaires recommandés (filtrés par région du terrain)
+      api
+        .listNotaries({ region: data.region })
+        .then((r) => {
+          let items = r.items || [];
+          if (items.length < 3) {
+            // Complète avec les meilleurs notaires si la région a peu de notaires
+            api
+              .listNotaries({})
+              .then((rr) => {
+                const all = rr.items || [];
+                const seen = new Set(items.map((n) => n.id));
+                for (const n of all) {
+                  if (!seen.has(n.id)) {
+                    items.push(n);
+                    seen.add(n.id);
+                  }
+                  if (items.length >= 3) break;
+                }
+                setNotaries(items.slice(0, 3));
+              })
+              .catch(() => setNotaries(items.slice(0, 3)));
+          } else {
+            setNotaries(items.slice(0, 3));
+          }
+        })
         .catch(() => {});
     } catch (err) {
       setError(err.message || "Terrain introuvable");
@@ -655,6 +716,260 @@ export default function DetailTerrain() {
               </div>
             </div>
           </div>
+
+          {/* === NOTAIRES RECOMMANDÉS (visible après unlock contact) ============ */}
+          {!isMasked && notaries.length > 0 && (
+            <section
+              style={{
+                maxWidth: 1200,
+                margin: "32px auto 0",
+                padding: "0 24px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 800 }}>
+                    Notaires recommandés à {land.region}
+                  </h2>
+                  <p style={{ fontSize: 13, color: C.textSoft, marginTop: 4 }}>
+                    Sécurisez votre contrat de location avec un notaire de confiance.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate("/notaires")}
+                  style={{
+                    padding: "8px 14px",
+                    background: "transparent",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 999,
+                    color: C.primaryDark,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Voir tous →
+                </button>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                  gap: 14,
+                }}
+              >
+                {notaries.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => navigate(`/notaire/${n.id}`)}
+                    className="dt-card"
+                    style={{
+                      cursor: "pointer",
+                      display: "flex",
+                      gap: 12,
+                      padding: 16,
+                      transition: "transform 0.15s, box-shadow 0.15s",
+                      position: "relative",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 10px 24px rgba(0,0,0,.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.03)";
+                    }}
+                  >
+                    {n.boosted && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          background: "linear-gradient(135deg, #ffd66e, #f59e0b)",
+                          color: "#5a3500",
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        ⚡ Premium
+                      </span>
+                    )}
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        flexShrink: 0,
+                        borderRadius: "50%",
+                        background: `url(${n.photo_url || "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200"}) center/cover`,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ fontSize: 14 }}>{n.nom}</strong>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginTop: 2,
+                        }}
+                      >
+                        <span style={{ color: "#f59e0b", fontSize: 13 }}>★</span>
+                        <span style={{ fontSize: 12, color: C.textSoft }}>
+                          {n.rating_avg ? n.rating_avg.toFixed(1) : "—"} ({n.rating_count})
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: C.textSoft,
+                          marginTop: 4,
+                        }}
+                      >
+                        {n.city || n.region} • {n.contracts_count}+ contrats
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* === ADS CARROUSEL — fournisseurs intrants/machines ================ */}
+          {ads.length > 0 && (
+            <section
+              style={{
+                maxWidth: 1200,
+                margin: "32px auto 0",
+                padding: "0 24px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 800 }}>
+                    Pour exploiter ce terrain
+                  </h2>
+                  <p style={{ fontSize: 13, color: C.textSoft, marginTop: 4 }}>
+                    Engrais, semences, irrigation et machines — recommandés par notre marketplace.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate("/marketplace")}
+                  style={{
+                    padding: "8px 14px",
+                    background: "transparent",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 999,
+                    color: C.primaryDark,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Voir marketplace →
+                </button>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                  gap: 14,
+                }}
+              >
+                {ads
+                  .filter((a) => a.category !== "notaire")
+                  .slice(0, 4)
+                  .map((ad) => (
+                    <div
+                      key={ad.id}
+                      className="dt-card"
+                      style={{ padding: 0, overflow: "hidden", cursor: "pointer" }}
+                      onClick={() => {
+                        if (ad.target_url?.startsWith("http"))
+                          window.open(ad.target_url, "_blank");
+                        else navigate("/marketplace");
+                      }}
+                    >
+                      <div
+                        style={{
+                          aspectRatio: "16 / 10",
+                          background: `url(${ad.image_url || "https://images.unsplash.com/photo-1560493676-04071c5f467b?w=600"}) center/cover, #eef3ef`,
+                          position: "relative",
+                        }}
+                      >
+                        {(ad.boost_level ?? 0) > 0 && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              top: 10,
+                              left: 10,
+                              background: "linear-gradient(135deg, #ffd66e, #f59e0b)",
+                              color: "#5a3500",
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                          >
+                            Sponsorisé
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: 10,
+                            right: 10,
+                            background: "rgba(255,255,255,0.95)",
+                            padding: "3px 10px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: C.primaryDark,
+                          }}
+                        >
+                          {ad.category}
+                        </span>
+                      </div>
+                      <div style={{ padding: 14 }}>
+                        <strong style={{ fontSize: 14, lineHeight: 1.3 }}>{ad.title}</strong>
+                        {ad.description && (
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: C.textSoft,
+                              marginTop: 6,
+                              lineHeight: 1.5,
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {ad.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
         </main>
 
         {/* Offer modal */}
