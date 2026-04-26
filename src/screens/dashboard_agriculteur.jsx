@@ -1,8 +1,10 @@
 // DashboardAgriculteur.jsx - Version avec intégration API
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 export default function DashboardAgriculteur() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState(null);
@@ -19,11 +21,11 @@ export default function DashboardAgriculteur() {
       icon: "dashboard",
       label: "Tableau de bord",
       active: true,
-      href: "/dashboard/agriculteur",
+      href: "/dashboard-agriculteur",
     },
-    { icon: "landscape", label: "Mes Terres", href: "/mes-terres" },
-    { icon: "description", label: "Contrats", href: "/contrats" },
-    { icon: "account_balance", label: "Finance", href: "/finance" },
+    { icon: "landscape", label: "Mes Terres", href: "/dashboard-agriculteur" },
+    { icon: "add_circle", label: "Publier un terrain", href: "/publier-terrain" },
+    { icon: "person", label: "Mon profil", href: "/profil" },
   ];
 
   useEffect(() => {
@@ -37,52 +39,53 @@ export default function DashboardAgriculteur() {
     try {
       // Récupérer les infos utilisateur
       const userData = await api.me();
-      setUser(userData.user || userData);
+      const me = userData.user || userData;
+      setUser(me);
 
-      // Récupérer les terrains de l'utilisateur
-      const lands = await api.listLands({
-        owner_id: userData.user?.id || userData.id,
-      });
-      setUserLands(lands.lands || lands || []);
+      // Récupérer les terrains de l'utilisateur (filter côté client par owner_id)
+      const landsRes = await api.listLands();
+      const allLands = landsRes.items || landsRes.lands || landsRes || [];
+      const myLands = allLands.filter((l) => l.owner_id === me.id);
+      setUserLands(myLands);
 
-      // Récupérer les offres reçues
-      const offers = await api.myOffers();
-      setUserOffers(offers.offers || offers || []);
+      // Récupérer les offres reçues (le backend retourne { items: [...] })
+      const offersRes = await api.myOffers();
+      const offers = offersRes.items || offersRes.offers || offersRes || [];
+      setUserOffers(offers);
 
       // Calculer les statistiques
-      const pendingOffers = (offers.offers || offers || []).filter(
-        (offer) => offer.status === "pending" || offer.status === "en_attente",
+      const pendingOffers = offers.filter(
+        (o) => o.status === "pending" || o.status === "en_attente",
       ).length;
 
-      const totalRevenue = (offers.offers || offers || [])
-        .filter(
-          (offer) => offer.status === "accepted" || offer.status === "accepte",
-        )
-        .reduce((sum, offer) => sum + (parseFloat(offer.amount) || 0), 0);
+      const totalRevenue = offers
+        .filter((o) => o.status === "accepted" || o.status === "accepte")
+        .reduce(
+          (sum, o) => sum + (parseFloat(o.price || o.amount) || 0),
+          0,
+        );
 
       setStats({
-        totalLands: (lands.lands || lands || []).length,
-        pendingOffers: pendingOffers,
-        totalRevenue: totalRevenue,
+        totalLands: myLands.length,
+        pendingOffers,
+        totalRevenue,
       });
     } catch (err) {
       console.error("Erreur chargement dashboard:", err);
-      setError(err.message || "Erreur lors du chargement des données");
-
-      // Données de démo en cas d'erreur
-      setUserLands(demoLands);
-      setUserOffers(demoOffers);
-      setStats({
-        totalLands: demoLands.length,
-        pendingOffers: demoOffers.length,
-        totalRevenue: 1270000,
-      });
+      setError(
+        err.status === 401
+          ? "Vous devez être connecté"
+          : err.message || "Erreur lors du chargement des données",
+      );
+      if (err.status === 401) {
+        setTimeout(() => navigate("/connexion"), 1500);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Données de démonstration
+  // Données de démonstration (uniquement utilisées si l'utilisateur n'a pas encore de terrain)
   const demoLands = [
     {
       id: 1,
@@ -736,16 +739,14 @@ export default function DashboardAgriculteur() {
                 >
                   {(userLands.length > 0 ? userLands : demoLands)
                     .slice(0, 2)
-                    .map(
-                      ({
-                        id,
-                        title,
-                        location,
-                        superficie,
-                        surface,
-                        status,
-                        img,
-                      }) => {
+                    .map((land) => {
+                        const id = land.id;
+                        const title = land.title;
+                        const location = land.location || [land.commune, land.region].filter(Boolean).join(", ") || "Maroc";
+                        const superficie = land.superficie || (land.surface_ha ? `${land.surface_ha} Hectares` : null);
+                        const surface = land.surface;
+                        const status = land.status;
+                        const img = land.img || (land.images && land.images[0]?.url) || land.cover_image;
                         const statusStyle = getStatusStyle(status);
                         return (
                           <div
@@ -759,9 +760,7 @@ export default function DashboardAgriculteur() {
                               overflow: "hidden",
                               cursor: "pointer",
                             }}
-                            onClick={() =>
-                              (window.location.href = `/terrains/${id}`)
-                            }
+                            onClick={() => navigate(`/terrain/${id}`)}
                           >
                             <div
                               style={{
@@ -856,8 +855,7 @@ export default function DashboardAgriculteur() {
                             </div>
                           </div>
                         );
-                      },
-                    )}
+                      })}
                 </div>
               </div>
 
@@ -903,8 +901,20 @@ export default function DashboardAgriculteur() {
                   style={{ display: "flex", flexDirection: "column", gap: 16 }}
                 >
                   {(userOffers.length > 0 ? userOffers : demoOffers)
-                    .slice(0, 2)
-                    .map((offer) => (
+                    .slice(0, 4)
+                    .map((rawOffer) => {
+                      const offer = {
+                        id: rawOffer.id,
+                        name: rawOffer.name || rawOffer.investor_nom || "Investisseur",
+                        role: rawOffer.role,
+                        property: rawOffer.property || rawOffer.land_title || "Terrain",
+                        amount: rawOffer.amount || rawOffer.price,
+                        price: rawOffer.price && typeof rawOffer.price === "string" ? rawOffer.price : null,
+                        time: rawOffer.time || (rawOffer.created_at ? new Date(rawOffer.created_at).toLocaleDateString("fr-FR") : "Récemment"),
+                        status: rawOffer.status,
+                        img: rawOffer.img,
+                      };
+                      return (
                       <div
                         key={offer.id}
                         className="offer-card"
@@ -1009,7 +1019,7 @@ export default function DashboardAgriculteur() {
                             }}
                           >
                             {offer.price ||
-                              `${offer.amount?.toLocaleString()} DH`}
+                              `${Number(offer.amount || 0).toLocaleString()} DH`}
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
@@ -1051,7 +1061,8 @@ export default function DashboardAgriculteur() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -1060,7 +1071,7 @@ export default function DashboardAgriculteur() {
 
         {/* FAB */}
         <button
-          onClick={() => (window.location.href = "/publier")}
+          onClick={() => navigate("/publier-terrain")}
           style={{
             position: "fixed",
             bottom: 32,
