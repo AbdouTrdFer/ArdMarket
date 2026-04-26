@@ -71,7 +71,7 @@ function pickRealisticImages(region, listingId) {
   const topo = TOPOGRAPHIC_IMAGES[seed % TOPOGRAPHIC_IMAGES.length];
   // Évite les doublons si le pool n'a qu'une seule image
   const second = pool.length > 1 ? pool[(seed + 1) % pool.length] : pool[0];
-  return [main, topo, second].filter(Boolean);
+  return [...new Set([main, topo, second].filter(Boolean))];
 }
 
 // Dictionnaire darija/arabe → français pour les villes courantes
@@ -429,10 +429,10 @@ export async function syncFromFirebase({ limit = 100 } = {}) {
       const { id, action } = upsertLand(payload);
       // Combine realistic images (en premier, pour la galerie) + images CDN Telegram (en suffixe).
       // Si Telegram CDN renvoie un screenshot test, l'utilisateur voit d'abord les images de qualité.
-      const allImages = [
+      const allImages = [...new Set([
         ...(payload._realistic_images || []),
         ...((listing.images || []).filter((u) => typeof u === "string")),
-      ];
+      ])];
       const imgN = syncImages(id, allImages);
       const docN = syncDocuments(id, listing.documents);
 
