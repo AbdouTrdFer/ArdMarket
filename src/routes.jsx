@@ -18,6 +18,7 @@ import DashboardInvestisseurDarija from "./screens/dashboard_investisseurDarija"
 import DetailTerrainDarija from "./screens/detail_terrainDarija";
 import LandingPageDarija from "./screens/landingDarija";
 import AdminSync from "./screens/admin_sync";
+import DemoTelegram from "./screens/demo_telegram";
 
 const routes = createBrowserRouter([
   {
@@ -67,6 +68,7 @@ const routes = createBrowserRouter([
 
       // Admin / sync Telegram bot (Firebase)
       { path: "/admin/sync", element: <AdminSync /> },
+      { path: "/demo/telegram", element: <DemoTelegram /> },
     ],
   },
 ]);

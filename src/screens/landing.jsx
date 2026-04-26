@@ -27,8 +27,8 @@ const FEATURES = [
   },
   {
     icon: "record_voice_over",
-    title: "Bot WhatsApp Darija",
-    text: "Les paysans peuvent publier leur terre en envoyant un simple vocal en Darija. L'IA transcrit, extrait les infos et crée la fiche automatiquement.",
+    title: "Bot Telegram Darija",
+    text: "Les paysans publient leur terre en envoyant un vocal en Darija sur Telegram. L'IA transcrit, lit le titre foncier (OCR), et crée la fiche — sans toucher au site web.",
     color: "#28a745",
   },
   {
@@ -154,8 +154,8 @@ const PLANS = [
 
 const FAQS = [
   {
-    q: "Comment fonctionne le bot WhatsApp Darija ?",
-    a: "Le paysan envoie un vocal en Darija sur notre numéro WhatsApp. L'IA transcrit, extrait les infos clés (région, surface, eau, culture) et crée une fiche brouillon que le paysan valide.",
+    q: "Comment fonctionne le bot Telegram Darija ?",
+    a: "Le paysan envoie un vocal en Darija au bot Telegram ArdMarket. Le NLP extrait localisation/surface/prix, demande les photos et le titre foncier, l'IA Vision lit le document, et la fiche apparaît automatiquement sur ArdMarket.",
   },
   {
     q: "Pourquoi les contacts sont-ils masqués ?",
